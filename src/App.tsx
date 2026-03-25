@@ -1071,7 +1071,7 @@ function App() {
               {dashboardError ? <p className="form-error">{dashboardError}</p> : null}
 
               <section className="admin-workspace">
-                <div className="admin-tabs" role="tablist" aria-label="Secciones de gesti?n">
+                <div className="admin-tabs" role="tablist" aria-label="Secciones de gestión">
                   <button
                     className={`admin-tab ${adminSection === 'products' ? 'admin-tab--active' : ''}`}
                     type="button"
@@ -1165,11 +1165,11 @@ function App() {
                         <p className="section-kicker">{productCategoryLabels[currentAdminProductCategory]}</p>
                         <h2>
                           {adminSection === 'details'
-                            ? 'Gestiona la secci?n de detalles'
+                            ? 'Gestiona la sección de detalles'
                             : 'Gestiona los productos de limpiapipas'}
                         </h2>
                         <p className="catalog-copy">
-                          Crea, edita y organiza los productos que se mostrar?n en esta pesta?a p?blica.
+                          Crea, edita y organiza los productos que se mostrarán en esta pestaña pública.
                         </p>
                       </div>
 
@@ -1184,8 +1184,8 @@ function App() {
                       ) : currentAdminProducts.length === 0 ? (
                         <div className="empty-admin-state">
                           <p className="section-kicker">{productCategoryLabels[currentAdminProductCategory]}</p>
-                          <h3>A?n no hay elementos en esta secci?n.</h3>
-                          <p>Cuando crees uno, aparecer? aqu? con sus adicionales y opciones de color.</p>
+                          <h3>Aún no hay elementos en esta sección.</h3>
+                          <p>Cuando crees uno, aparecerá aquí con sus adicionales y opciones de color.</p>
                         </div>
                       ) : (
                         currentAdminProducts.map((product) => (
@@ -1204,7 +1204,7 @@ function App() {
 
                             <div className="admin-product-card__content">
                               <p className="section-kicker">
-                                {product.is_active ? 'Visible en cat?logo' : 'Oculto del cat?logo'}
+                                {product.is_active ? 'Visible en catálogo' : 'Oculto del catálogo'}
                               </p>
                               <h3 className="admin-product-card__title">{product.name}</h3>
                               <p>{product.description}</p>
