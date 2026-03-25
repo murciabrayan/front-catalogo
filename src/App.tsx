@@ -195,6 +195,15 @@ function App() {
   const [isSavingPassword, setIsSavingPassword] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [successDialog, setSuccessDialog] = useState<{ title: string; message: string } | null>(
+    null,
+  )
+  const [deleteDialog, setDeleteDialog] = useState<{
+    kind: 'product' | 'additional'
+    id: number
+    title: string
+    message: string
+  } | null>(null)
   const [passwordForm, setPasswordForm] = useState({
     current_password: '',
     new_password: '',
@@ -557,6 +566,12 @@ function App() {
       setIsProductModalOpen(false)
       await loadAdminDashboard()
       await loadPublicCatalog()
+      setSuccessDialog({
+        title: productForm.id ? 'Producto actualizado' : 'Producto creado',
+        message: productForm.id
+          ? 'Los cambios del producto se guardaron correctamente en el catálogo.'
+          : 'El nuevo producto ya quedó guardado y disponible en el panel.',
+      })
     } catch (error) {
       const message =
         error instanceof Error
@@ -566,6 +581,74 @@ function App() {
     } finally {
       setIsSavingProduct(false)
     }
+  }
+
+  function requestDeleteProduct(productId: number) {
+    setDeleteDialog({
+      kind: 'product',
+      id: productId,
+      title: 'Eliminar producto',
+      message: 'Esta acción eliminará el producto del panel y del catálogo público.',
+    })
+  }
+
+  function requestDeleteAdditional(optionId: number) {
+    setDeleteDialog({
+      kind: 'additional',
+      id: optionId,
+      title: 'Eliminar adicional',
+      message: 'Esta acción eliminará el adicional y dejará de estar disponible para los productos.',
+    })
+  }
+
+  async function executeDeleteProduct(productId: number) {
+    try {
+      await apiRequest(`/api/admin/products/${productId}/`, { method: 'DELETE' }, accessToken)
+      setProductForm(createEmptyProductForm())
+      await loadAdminDashboard()
+      await loadPublicCatalog()
+      setSuccessDialog({
+        title: 'Producto eliminado',
+        message: 'El producto fue eliminado correctamente del catálogo.',
+      })
+    } catch {
+      setDashboardError('No pude eliminar el producto.')
+    }
+  }
+
+  async function executeDeleteAdditional(optionId: number) {
+    try {
+      await apiRequest(
+        `/api/admin/additional-options/${optionId}/`,
+        { method: 'DELETE' },
+        accessToken,
+      )
+      setAdditionalForm(createEmptyAdditionalForm())
+      await loadAdminDashboard()
+      await loadPublicCatalog()
+      setSuccessDialog({
+        title: 'Adicional eliminado',
+        message: 'El adicional fue eliminado correctamente.',
+      })
+    } catch {
+      setDashboardError('No pude eliminar el adicional.')
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteDialog) {
+      return
+    }
+
+    const currentDialog = deleteDialog
+    setDeleteDialog(null)
+
+    if (currentDialog.kind === 'product') {
+      await executeDeleteProduct(currentDialog.id)
+      return
+    }
+
+    await executeDeleteAdditional(currentDialog.id)
   }
 
   async function handleDeleteProduct(productId: number) {
@@ -615,6 +698,12 @@ function App() {
       setIsAdditionalModalOpen(false)
       await loadAdminDashboard()
       await loadPublicCatalog()
+      setSuccessDialog({
+        title: additionalForm.id ? 'Adicional actualizado' : 'Adicional creado',
+        message: additionalForm.id
+          ? 'Los cambios del adicional se guardaron correctamente.'
+          : 'El nuevo adicional ya quedó guardado en el catálogo.',
+      })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No pude guardar el adicional.'
@@ -642,6 +731,9 @@ function App() {
       setDashboardError('No pude eliminar el adicional.')
     }
   }
+
+  void handleDeleteProduct
+  void handleDeleteAdditional
 
   function updateQuantity(optionId: number, nextValue: number) {
     setQuantities((current) => ({
@@ -672,10 +764,12 @@ function App() {
         new_password: '',
         confirm_password: '',
       })
-      setTimeout(() => {
-        setIsPasswordModalOpen(false)
-        setPasswordSuccess('')
-      }, 900)
+      setIsPasswordModalOpen(false)
+      setPasswordSuccess('')
+      setSuccessDialog({
+        title: 'Contraseña actualizada',
+        message: 'Tu contraseña se cambió correctamente y la cuenta sigue activa.',
+      })
     } catch {
       setPasswordError('No pude cambiar la contraseña. Revisa los datos e intenta de nuevo.')
     } finally {
@@ -1028,7 +1122,7 @@ function App() {
                                 <button
                                   className="danger-link"
                                   type="button"
-                                  onClick={() => handleDeleteProduct(product.id)}
+                                  onClick={() => requestDeleteProduct(product.id)}
                                 >
                                   Eliminar
                                 </button>
@@ -1084,7 +1178,7 @@ function App() {
                                   <button
                                     className="danger-link"
                                     type="button"
-                                    onClick={() => handleDeleteAdditional(option.id)}
+                                    onClick={() => requestDeleteAdditional(option.id)}
                                   >
                                     Eliminar
                                   </button>
@@ -1411,7 +1505,7 @@ function App() {
                           <button
                             className="danger-link"
                             type="button"
-                            onClick={() => handleDeleteProduct(product.id)}
+                            onClick={() => requestDeleteProduct(product.id)}
                           >
                             Eliminar
                           </button>
@@ -1618,7 +1712,7 @@ function App() {
                               <button
                                 className="danger-link"
                                 type="button"
-                                onClick={() => handleDeleteAdditional(option.id)}
+                                onClick={() => requestDeleteAdditional(option.id)}
                               >
                                 Eliminar
                               </button>
@@ -1827,6 +1921,79 @@ function App() {
                           {isSavingPassword ? 'Actualizando...' : 'Guardar nueva contraseña'}
                         </button>
                       </form>
+                    </div>
+                  </section>
+                </div>
+              ) : null}
+
+              {successDialog ? (
+                <div className="modal-backdrop" role="presentation">
+                  <section
+                    className="admin-modal admin-modal--narrow admin-confirmation"
+                    role="dialog"
+                    aria-modal="true"
+                  >
+                    <button
+                      className="modal-close"
+                      type="button"
+                      onClick={() => setSuccessDialog(null)}
+                      aria-label="Cerrar"
+                    />
+                    <div className="admin-modal__body admin-confirmation__body">
+                      <div className="admin-confirmation__badge" aria-hidden="true">
+                        ✓
+                      </div>
+                      <p className="section-kicker">Confirmación</p>
+                      <h2>{successDialog.title}</h2>
+                      <p>{successDialog.message}</p>
+                      <button
+                        className="primary-button admin-confirmation__button"
+                        type="button"
+                        onClick={() => setSuccessDialog(null)}
+                      >
+                        Entendido
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              ) : null}
+
+              {deleteDialog ? (
+                <div className="modal-backdrop" role="presentation">
+                  <section
+                    className="admin-modal admin-modal--narrow admin-confirmation"
+                    role="dialog"
+                    aria-modal="true"
+                  >
+                    <button
+                      className="modal-close"
+                      type="button"
+                      onClick={() => setDeleteDialog(null)}
+                      aria-label="Cerrar"
+                    />
+                    <div className="admin-modal__body admin-confirmation__body">
+                      <div className="admin-confirmation__badge admin-confirmation__badge--warning" aria-hidden="true">
+                        !
+                      </div>
+                      <p className="section-kicker">Confirmación</p>
+                      <h2>{deleteDialog.title}</h2>
+                      <p>{deleteDialog.message}</p>
+                      <div className="admin-confirmation__actions">
+                        <button
+                          className="ghost-button admin-confirmation__button"
+                          type="button"
+                          onClick={() => setDeleteDialog(null)}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          className="primary-button admin-confirmation__button"
+                          type="button"
+                          onClick={handleDeleteConfirm}
+                        >
+                          Sí, eliminar
+                        </button>
+                      </div>
                     </div>
                   </section>
                 </div>
