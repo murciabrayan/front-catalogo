@@ -557,8 +557,12 @@ function App() {
       setIsProductModalOpen(false)
       await loadAdminDashboard()
       await loadPublicCatalog()
-    } catch {
-      setDashboardError('No pude guardar el producto. Revisa los datos e intenta otra vez.')
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'No pude guardar el producto. Revisa los datos e intenta otra vez.'
+      setDashboardError(message)
     } finally {
       setIsSavingProduct(false)
     }
@@ -611,8 +615,10 @@ function App() {
       setIsAdditionalModalOpen(false)
       await loadAdminDashboard()
       await loadPublicCatalog()
-    } catch {
-      setDashboardError('No pude guardar el adicional.')
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No pude guardar el adicional.'
+      setDashboardError(message)
     } finally {
       setIsSavingAdditional(false)
     }
