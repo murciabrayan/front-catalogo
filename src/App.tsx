@@ -9,6 +9,7 @@ import {
   createEmptyAdditionalForm,
   createEmptyProductForm,
   fallbackProducts,
+  productCategoryLabels,
 } from './fallbackCatalog'
 import './App.css'
 import type {
@@ -17,6 +18,7 @@ import type {
   AdditionalOption,
   AdminUser,
   Product,
+  ProductCategory,
   ProductFormState,
   Quantities,
   SocialLink,
@@ -127,6 +129,7 @@ const hydrateProductForm = (product?: Product): ProductFormState => {
   return {
     id: product.id,
     name: product.name,
+    category: product.category,
     description: product.description,
     includes: product.includes,
     price: String(product.price),
@@ -161,6 +164,7 @@ const hydrateAdditionalForm = (option?: AdditionalOption): AdditionalFormState =
 function App() {
   const [view, setView] = useState<View>(getViewFromHash)
   const [products, setProducts] = useState<Product[]>(fallbackProducts)
+  const [catalogSection, setCatalogSection] = useState<ProductCategory>('limpiapipas')
   const [catalogError, setCatalogError] = useState('')
   const [isCatalogLoading, setIsCatalogLoading] = useState(true)
   const [activeProductId, setActiveProductId] = useState<number | null>(null)
@@ -182,7 +186,9 @@ function App() {
   const [isDashboardLoading, setIsDashboardLoading] = useState(false)
   const [isSavingProduct, setIsSavingProduct] = useState(false)
   const [isSavingAdditional, setIsSavingAdditional] = useState(false)
-  const [adminSection, setAdminSection] = useState<'products' | 'additionals'>('products')
+  const [adminSection, setAdminSection] = useState<'products' | 'details' | 'additionals'>(
+    'products',
+  )
   const [productForm, setProductForm] = useState<ProductFormState>(createEmptyProductForm())
   const [additionalForm, setAdditionalForm] = useState<AdditionalFormState>(
     createEmptyAdditionalForm(),
@@ -253,6 +259,10 @@ function App() {
     }
   }, [view, adminUser])
 
+  useEffect(() => {
+    setActiveProductId(null)
+  }, [catalogSection])
+
   const activeAdditionalGroups = useMemo(() => {
     if (!activeProduct) {
       return { bouquet: [], flower: [] } as Record<AdditionalCategory, AdditionalOption[]>
@@ -322,8 +332,17 @@ function App() {
     () =>
       [...products]
         .filter((product) => product.is_active ?? true)
+        .filter((product) => product.category === catalogSection)
         .sort((first, second) => (first.display_order ?? 0) - (second.display_order ?? 0)),
-    [products],
+    [catalogSection, products],
+  )
+
+  const adminProductsByCategory = useMemo(
+    () => ({
+      limpiapipas: adminProducts.filter((item) => item.category === 'limpiapipas'),
+      details: adminProducts.filter((item) => item.category === 'details'),
+    }),
+    [adminProducts],
   )
 
   const groupedAdminAdditionalOptions = useMemo(
@@ -333,6 +352,14 @@ function App() {
     }),
     [adminAdditionalOptions],
   )
+
+  const currentAdminProductCategory: ProductCategory =
+    adminSection === 'details' ? 'details' : 'limpiapipas'
+
+  const currentAdminProducts =
+    adminSection === 'additionals'
+      ? []
+      : adminProductsByCategory[currentAdminProductCategory]
 
   async function apiRequest<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
     const headers = new Headers(init?.headers)
@@ -432,7 +459,10 @@ function App() {
   }
 
   function openCreateProductModal() {
-    setProductForm(createEmptyProductForm())
+    setProductForm({
+      ...createEmptyProductForm(),
+      category: adminSection === 'details' ? 'details' : 'limpiapipas',
+    })
     setIsProductModalOpen(true)
   }
 
@@ -533,6 +563,7 @@ function App() {
         .filter(Boolean)
 
       formData.append('name', productForm.name)
+      formData.append('category', productForm.category)
       formData.append('description', productForm.description)
       formData.append('includes', productForm.includes)
       formData.append('price', productForm.price || '0')
@@ -1040,7 +1071,7 @@ function App() {
               {dashboardError ? <p className="form-error">{dashboardError}</p> : null}
 
               <section className="admin-workspace">
-                <div className="admin-tabs" role="tablist" aria-label="Secciones de gestión">
+                <div className="admin-tabs" role="tablist" aria-label="Secciones de gesti?n">
                   <button
                     className={`admin-tab ${adminSection === 'products' ? 'admin-tab--active' : ''}`}
                     type="button"
@@ -1049,6 +1080,15 @@ function App() {
                     onClick={() => setAdminSection('products')}
                   >
                     Productos
+                  </button>
+                  <button
+                    className={`admin-tab ${adminSection === 'details' ? 'admin-tab--active' : ''}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={adminSection === 'details'}
+                    onClick={() => setAdminSection('details')}
+                  >
+                    Detalles
                   </button>
                   <button
                     className={`admin-tab ${adminSection === 'additionals' ? 'admin-tab--active' : ''}`}
@@ -1061,79 +1101,7 @@ function App() {
                   </button>
                 </div>
 
-                {adminSection === 'products' ? (
-                  <div className="admin-panel">
-                    <div className="admin-panel__heading">
-                      <div>
-                        <p className="section-kicker">Productos</p>
-                        <h2>Gestiona el catálogo</h2>
-                        <p className="catalog-copy">
-                          Edita, reorganiza o crea nuevos arreglos desde un panel más claro.
-                        </p>
-                      </div>
-
-                      <button className="primary-button admin-inline-button" type="button" onClick={openCreateProductModal}>
-                        Crear producto
-                      </button>
-                    </div>
-
-                    <div className="admin-card-grid">
-                      {isDashboardLoading ? (
-                        <p className="empty-copy">Cargando productos...</p>
-                      ) : (
-                        adminProducts.map((product) => (
-                          <article className="admin-product-card" key={product.id}>
-                            <div className="admin-product-card__photo">
-                              {getProductImage(product) ? (
-                                <img
-                                  src={getProductImage(product)!}
-                                  alt={product.name}
-                                  style={getProductImageStyle(product.name)}
-                                />
-                              ) : (
-                                <div className="photo-fallback">Sin imagen</div>
-                              )}
-                            </div>
-
-                            <div className="admin-product-card__content">
-                              <p className="section-kicker">
-                                {product.is_active ? 'Visible en catálogo' : 'Oculto del catálogo'}
-                              </p>
-                              <h3 className="admin-product-card__title">{product.name}</h3>
-                              <p>{product.description}</p>
-
-                              <div className="admin-chip-row">
-                                <span className="admin-muted-chip">{formatCurrency(product.price)}</span>
-                                <span className="admin-muted-chip">{product.color_options.length} colores</span>
-                                <span className="admin-muted-chip">
-                                  {product.additional_options.length} adicionales
-                                </span>
-                              </div>
-
-                              <div className="admin-product-card__footer">
-                                <button
-                                  className="primary-button admin-inline-button"
-                                  type="button"
-                                  onClick={() => openEditProductModal(product)}
-                                >
-                                  Editar
-                                </button>
-
-                                <button
-                                  className="danger-link"
-                                  type="button"
-                                  onClick={() => requestDeleteProduct(product.id)}
-                                >
-                                  Eliminar
-                                </button>
-                              </div>
-                            </div>
-                          </article>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                ) : (
+                {adminSection === 'additionals' ? (
                   <div className="admin-panel">
                     <div className="admin-panel__heading">
                       <div>
@@ -1190,8 +1158,89 @@ function App() {
                       ))}
                     </div>
                   </div>
-                )}
+                ) : (
+                  <div className="admin-panel">
+                    <div className="admin-panel__heading">
+                      <div>
+                        <p className="section-kicker">{productCategoryLabels[currentAdminProductCategory]}</p>
+                        <h2>
+                          {adminSection === 'details'
+                            ? 'Gestiona la secci?n de detalles'
+                            : 'Gestiona los productos de limpiapipas'}
+                        </h2>
+                        <p className="catalog-copy">
+                          Crea, edita y organiza los productos que se mostrar?n en esta pesta?a p?blica.
+                        </p>
+                      </div>
 
+                      <button className="primary-button admin-inline-button" type="button" onClick={openCreateProductModal}>
+                        {adminSection === 'details' ? 'Crear detalle' : 'Crear producto'}
+                      </button>
+                    </div>
+
+                    <div className="admin-card-grid">
+                      {isDashboardLoading ? (
+                        <p className="empty-copy">Cargando productos...</p>
+                      ) : currentAdminProducts.length === 0 ? (
+                        <div className="empty-admin-state">
+                          <p className="section-kicker">{productCategoryLabels[currentAdminProductCategory]}</p>
+                          <h3>A?n no hay elementos en esta secci?n.</h3>
+                          <p>Cuando crees uno, aparecer? aqu? con sus adicionales y opciones de color.</p>
+                        </div>
+                      ) : (
+                        currentAdminProducts.map((product) => (
+                          <article className="admin-product-card" key={product.id}>
+                            <div className="admin-product-card__photo">
+                              {getProductImage(product) ? (
+                                <img
+                                  src={getProductImage(product)!}
+                                  alt={product.name}
+                                  style={getProductImageStyle(product.name)}
+                                />
+                              ) : (
+                                <div className="photo-fallback">Sin imagen</div>
+                              )}
+                            </div>
+
+                            <div className="admin-product-card__content">
+                              <p className="section-kicker">
+                                {product.is_active ? 'Visible en cat?logo' : 'Oculto del cat?logo'}
+                              </p>
+                              <h3 className="admin-product-card__title">{product.name}</h3>
+                              <p>{product.description}</p>
+
+                              <div className="admin-chip-row">
+                                <span className="admin-muted-chip">{formatCurrency(product.price)}</span>
+                                <span className="admin-muted-chip">{product.color_options.length} colores</span>
+                                <span className="admin-muted-chip">
+                                  {product.additional_options.length} adicionales
+                                </span>
+                              </div>
+
+                              <div className="admin-product-card__footer">
+                                <button
+                                  className="primary-button admin-inline-button"
+                                  type="button"
+                                  onClick={() => openEditProductModal(product)}
+                                >
+                                  Editar
+                                </button>
+
+                                <button
+                                  className="danger-link"
+                                  type="button"
+                                  onClick={() => requestDeleteProduct(product.id)}
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
                 {isProductModalOpen ? (
                   <div className="modal-backdrop" role="presentation">
                     <section className="admin-modal" role="dialog" aria-modal="true">
@@ -1204,6 +1253,9 @@ function App() {
                       <div className="admin-modal__body">
                         <p className="section-kicker">Producto</p>
                         <h2>{productForm.id ? 'Editar producto' : 'Nuevo producto'}</h2>
+                        <p className="admin-form-note">
+                          Se guardará en: {productCategoryLabels[productForm.category]}
+                        </p>
                         <form className="admin-form" onSubmit={handleProductSubmit}>
                           <div className="form-grid">
                             <label>
@@ -2028,8 +2080,34 @@ function App() {
             </div>
           </div>
 
+          <div className="catalog-tabs" role="tablist" aria-label="Categorías del catálogo">
+            {(['limpiapipas', 'details'] as ProductCategory[]).map((category) => (
+              <button
+                key={category}
+                className={`catalog-tab ${
+                  catalogSection === category ? 'catalog-tab--active' : ''
+                }`}
+                type="button"
+                role="tab"
+                aria-selected={catalogSection === category}
+                onClick={() => setCatalogSection(category)}
+              >
+                {productCategoryLabels[category]}
+              </button>
+            ))}
+          </div>
+
           {isCatalogLoading ? (
             <p className="empty-copy">Cargando catálogo...</p>
+          ) : catalogProducts.length === 0 ? (
+            <div className="empty-catalog-state">
+              <p className="section-kicker">{productCategoryLabels[catalogSection]}</p>
+              <h2>Esta sección estará disponible muy pronto.</h2>
+              <p className="catalog-copy">
+                Aquí aparecerán los productos que cargues para esta categoría desde el panel
+                admin.
+              </p>
+            </div>
           ) : (
             <div className="products-grid">
               {catalogProducts.map((product) => (

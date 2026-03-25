@@ -3,12 +3,18 @@ import type {
   AdditionalFormState,
   AdditionalOption,
   Product,
+  ProductCategory,
   ProductFormState,
 } from './types'
 
 export const additionalCategoryLabels: Record<AdditionalCategory, string> = {
   bouquet: 'Adicionales para ramos',
   flower: 'Adicionales florales',
+}
+
+export const productCategoryLabels: Record<ProductCategory, string> = {
+  limpiapipas: 'Limpiapipas',
+  details: 'Detalles',
 }
 
 export const accentOptions = [
@@ -55,6 +61,7 @@ const productDefinitions = [
 
 export const fallbackProducts: Product[] = productDefinitions.map((item) => ({
   ...item,
+  category: 'limpiapipas',
   image_url: null,
   color_options: [...item.colors],
   additional_options: fallbackAdditionalOptions,
@@ -65,6 +72,7 @@ export const fallbackProducts: Product[] = productDefinitions.map((item) => ({
 export const createEmptyProductForm = (): ProductFormState => ({
   id: null,
   name: '',
+  category: 'limpiapipas',
   description: '',
   includes: '',
   price: '',

@@ -1,6 +1,7 @@
 export type View = 'home' | 'catalogo' | 'admin'
 
 export type AdditionalCategory = 'bouquet' | 'flower'
+export type ProductCategory = 'limpiapipas' | 'details'
 
 export type AdditionalOption = {
   id: number
@@ -15,6 +16,7 @@ export type AdditionalOption = {
 export type Product = {
   id: number
   name: string
+  category: ProductCategory
   description: string
   includes: string
   price: number
@@ -45,6 +47,7 @@ export type AdminUser = {
 export type ProductFormState = {
   id: number | null
   name: string
+  category: ProductCategory
   description: string
   includes: string
   price: string
